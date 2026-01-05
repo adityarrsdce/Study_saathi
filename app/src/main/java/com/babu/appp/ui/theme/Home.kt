@@ -13,6 +13,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -20,23 +21,22 @@ import androidx.navigation.NavController
 import com.babu.appp.R
 import com.google.android.gms.ads.*
 
-
 @Composable
 fun HomeScreen(navController: NavController, paddingValues: PaddingValues) {
     val context = LocalContext.current
     var backPressedTime by remember { mutableStateOf(0L) }
 
-    // ✅ Back press handler
+    // ✅ Back press exit handling
     BackHandler {
         val currentTime = System.currentTimeMillis()
         if (currentTime - backPressedTime < 2000) {
-            // Exit the app
             (context as? Activity)?.finish()
         } else {
             backPressedTime = currentTime
             Toast.makeText(context, "Press back again to exit", Toast.LENGTH_SHORT).show()
         }
     }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -47,6 +47,7 @@ fun HomeScreen(navController: NavController, paddingValues: PaddingValues) {
                 end = 16.dp
             )
     ) {
+
         // 🔰 App Header
         Row(
             modifier = Modifier
@@ -74,7 +75,13 @@ fun HomeScreen(navController: NavController, paddingValues: PaddingValues) {
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
         ) {
-            Text("Study Materials", fontWeight = FontWeight.Bold, fontSize = 24.sp)
+
+            Text(
+                text = "Study Materials",
+                fontWeight = FontWeight.Bold,
+                fontSize = 24.sp
+            )
+
             Spacer(modifier = Modifier.height(12.dp))
 
             CardGrid(
@@ -83,11 +90,8 @@ fun HomeScreen(navController: NavController, paddingValues: PaddingValues) {
                     Triple("Results", R.drawable.result_icon, Color(0xFFFFD100)),
                     Triple("Syllabus", R.drawable.syllabus_icon, Color(0xFF00B894)),
                     Triple("Important Questions", R.drawable.important_icon, Color(0xFF6C5CE7)),
-                    //Triple("Diploma", R.drawable.diploma_icon, Color(0xFF3498DB)),
                     Triple("Feedback", R.drawable.feedback_icon, Color(0xFFE64A19)),
-                    Triple("Competitive Exam", R.drawable.comp_icon, Color(0xFFEF476F)),
-                    //Triple("Resume", R.drawable.resume_icon, Color(0xFF1E88E5))
-
+                    Triple("Competitive Exam", R.drawable.comp_icon, Color(0xFFEF476F))
                 ),
                 onItemClick = { label ->
                     when (label) {
@@ -97,16 +101,13 @@ fun HomeScreen(navController: NavController, paddingValues: PaddingValues) {
                         "Important Questions" -> navController.navigate("imp")
                         "Feedback" -> navController.navigate("feedback")
                         "Competitive Exam" -> navController.navigate("comp_exam")
-                        //"Diploma" -> navController.navigate("diploma")
-                        //"Resume" -> navController.navigate("resume")
-
                     }
                 }
             )
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // ✅ Show Banner Ad continuously
+            // ✅ Banner Ad
             ShowBannerAd(adUnitId = "ca-app-pub-4302526630220985/1663343480")
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -122,34 +123,51 @@ fun CardGrid(
     Column {
         items.chunked(2).forEach { rowItems ->
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                for ((label, iconRes, _) in rowItems) {
+
+                rowItems.forEach { (label, iconRes, _) ->
                     Card(
                         modifier = Modifier
                             .weight(1f)
-                            .padding(vertical = 8.dp)
+                            .height(140.dp) // ✅ FIXED CARD HEIGHT
                             .clickable { onItemClick(label) },
                         shape = RoundedCornerShape(16.dp),
-                        elevation = CardDefaults.cardElevation(6.dp)
+                        elevation = CardDefaults.cardElevation(6.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surface
+                        )
                     ) {
                         Column(
                             modifier = Modifier
-                                .padding(20.dp)
-                                .fillMaxWidth(),
-                            horizontalAlignment = Alignment.CenterHorizontally
+                                .fillMaxSize()
+                                .padding(16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
                         ) {
                             Image(
                                 painter = painterResource(id = iconRes),
                                 contentDescription = label,
-                                modifier = Modifier.size(50.dp)
+                                modifier = Modifier.size(48.dp)
                             )
+
                             Spacer(modifier = Modifier.height(8.dp))
-                            Text(text = label, fontWeight = FontWeight.Medium)
+
+                            Text(
+                                text = label,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium,
+                                maxLines = 2,
+                                textAlign = TextAlign.Center
+                            )
                         }
                     }
                 }
+
+                // Maintain grid alignment for odd items
                 if (rowItems.size == 1) {
                     Spacer(modifier = Modifier.weight(1f))
                 }
@@ -164,7 +182,6 @@ fun ShowBannerAd(adUnitId: String) {
         factory = { context ->
             AdView(context).apply {
                 setAdSize(AdSize.BANNER)
-
                 this.adUnitId = adUnitId
                 loadAd(AdRequest.Builder().build())
             }

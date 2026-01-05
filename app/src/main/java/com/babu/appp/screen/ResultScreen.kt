@@ -1,7 +1,6 @@
 package com.babu.appp.screen
 
 import com.babu.appp.R
-
 import android.app.DownloadManager
 import android.content.Context
 import android.net.Uri
@@ -32,36 +31,38 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.navigation.NavController
+import androidx.navigation.NavHostController
 import kotlinx.coroutines.*
 import org.json.JSONObject
 import java.net.URL
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-fun ResultScreen(navController: NavController) {
+fun ResultScreen(navController: NavHostController) {
+
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val isDark = isSystemInDarkTheme()
     val backgroundImage = if (isDark) R.drawable.pyq_dark else R.drawable.pyq_light
 
     var regNo by rememberSaveable { mutableStateOf("") }
-    var selectedCourse by rememberSaveable { mutableStateOf("") }
     var selectedSemester by rememberSaveable { mutableStateOf("") }
     var resultUrl by remember { mutableStateOf<String?>(null) }
-    var courseLinks by remember { mutableStateOf<Map<String, Map<String, String>>>(emptyMap()) }
+
+    var semesterLinks by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
 
     var isRotating by remember { mutableStateOf(false) }
     val rotationAngle by animateFloatAsState(
         targetValue = if (isRotating) 360f else 0f,
-        animationSpec = tween(durationMillis = 600),
+        animationSpec = tween(600),
         label = "rotation"
     )
 
-    val jsonUrl = "https://raw.githubusercontent.com/adityarrsdce/babubhaiya/main/Resutl/result.json"
+    val jsonUrl =
+        "https://raw.githubusercontent.com/adityarrsdce/babubhaiya/main/Resutl/result.json"
 
     fun updateResultUrl() {
-        val semUrl = courseLinks[selectedCourse]?.get(selectedSemester)
+        val semUrl = semesterLinks[selectedSemester]
         if (!semUrl.isNullOrEmpty() && regNo.isNotBlank()) {
             val romanSem = convertSemesterToRoman(selectedSemester)
             resultUrl = "$semUrl?Sem=$romanSem&RegNo=$regNo"
@@ -69,11 +70,10 @@ fun ResultScreen(navController: NavController) {
     }
 
     LaunchedEffect(Unit) {
-        courseLinks = fetchResultLinks(jsonUrl) ?: emptyMap()
+        semesterLinks = fetchSemesterLinks(jsonUrl) ?: emptyMap()
     }
 
-    val courses = courseLinks.keys.toList()
-    val semesters = courseLinks[selectedCourse]?.keys?.toList() ?: emptyList()
+    val semesters = semesterLinks.keys.sorted()
 
     Scaffold(
         topBar = {
@@ -84,17 +84,15 @@ fun ResultScreen(navController: NavController) {
                     titleContentColor = Color.White
                 ),
                 actions = {
-                    IconButton(
-                        onClick = {
-                            isRotating = true
-                            updateResultUrl()
-                            Toast.makeText(context, "Reloading result...", Toast.LENGTH_SHORT).show()
-                            coroutineScope.launch {
-                                delay(600)
-                                isRotating = false
-                            }
+                    IconButton(onClick = {
+                        isRotating = true
+                        updateResultUrl()
+                        Toast.makeText(context, "Reloading result...", Toast.LENGTH_SHORT).show()
+                        coroutineScope.launch {
+                            delay(600)
+                            isRotating = false
                         }
-                    ) {
+                    }) {
                         Icon(
                             Icons.Default.Refresh,
                             contentDescription = "Reload",
@@ -106,11 +104,13 @@ fun ResultScreen(navController: NavController) {
             )
         }
     ) { paddingValues ->
+
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
+
             Image(
                 painter = painterResource(id = backgroundImage),
                 contentDescription = null,
@@ -125,7 +125,8 @@ fun ResultScreen(navController: NavController) {
                     .verticalScroll(rememberScrollState()),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Input Row
+
+                // ---------------- Registration Number (FIXED BACKGROUND) ----------------
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     OutlinedTextField(
                         value = regNo,
@@ -134,9 +135,7 @@ fun ResultScreen(navController: NavController) {
                             updateResultUrl()
                         },
                         label = { Text("Registration Number") },
-                        modifier = Modifier
-                            .weight(1f)
-                            .padding(end = 8.dp),
+                        modifier = Modifier.weight(1f),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedContainerColor = if (isDark) Color.Black else Color.White,
                             unfocusedContainerColor = if (isDark) Color.Black else Color.White,
@@ -146,132 +145,91 @@ fun ResultScreen(navController: NavController) {
                             unfocusedLabelColor = if (isDark) Color.White else Color.Black
                         )
                     )
+
                     Column {
                         IconButton(onClick = {
                             regNo = (regNo.toLongOrNull()?.plus(1)).toString()
                             updateResultUrl()
                         }) {
-                            Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Increase")
+                            Icon(Icons.Default.KeyboardArrowUp, null)
                         }
                         IconButton(onClick = {
                             regNo = (regNo.toLongOrNull()?.minus(1)).toString()
                             updateResultUrl()
                         }) {
-                            Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Decrease")
+                            Icon(Icons.Default.KeyboardArrowDown, null)
                         }
                     }
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Course dropdown
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
+                // ---------------- Semester DROPDOWN (NEW) ----------------
+                var expanded by remember { mutableStateOf(false) }
+
+                ExposedDropdownMenuBox(
+                    expanded = expanded,
+                    onExpandedChange = { expanded = !expanded },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    var expanded by remember { mutableStateOf(false) }
-
-                    ExposedDropdownMenuBox(
-                        expanded = expanded,
-                        onExpandedChange = { expanded = !expanded },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        OutlinedTextField(
-                            readOnly = true,
-                            value = selectedCourse.ifBlank { "Select Course" },
-                            onValueChange = {},
-                            label = { Text("Course") },
-                            trailingIcon = {
-                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
-                            },
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedContainerColor = if (isDark) Color.Black else Color.White,
-                                unfocusedContainerColor = if (isDark) Color.Black else Color.White,
-                                focusedTextColor = if (isDark) Color.White else Color.Black,
-                                unfocusedTextColor = if (isDark) Color.White else Color.Black,
-                                focusedLabelColor = if (isDark) Color.White else Color.Black,
-                                unfocusedLabelColor = if (isDark) Color.White else Color.Black
-                            ),
-                            modifier = Modifier.menuAnchor()
+                    OutlinedTextField(
+                        readOnly = true,
+                        value = selectedSemester.ifBlank { "Select Semester" },
+                        onValueChange = {},
+                        label = { Text("Semester") },
+                        trailingIcon = {
+                            ExposedDropdownMenuDefaults.TrailingIcon(expanded)
+                        },
+                        modifier = Modifier.menuAnchor(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = if (isDark) Color.Black else Color.White,
+                            unfocusedContainerColor = if (isDark) Color.Black else Color.White,
+                            focusedTextColor = if (isDark) Color.White else Color.Black,
+                            unfocusedTextColor = if (isDark) Color.White else Color.Black
                         )
+                    )
 
-                        ExposedDropdownMenu(
-                            expanded = expanded,
-                            onDismissRequest = { expanded = false }
-                        ) {
-                            courses.forEach { course ->
-                                DropdownMenuItem(
-                                    text = { Text(course) },
-                                    onClick = {
-                                        selectedCourse = course
-                                        selectedSemester = ""
-                                        resultUrl = null
-                                        expanded = false
-                                    }
-                                )
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.width(12.dp))
-
-                    if (selectedCourse.isNotBlank()) {
-                        Button(onClick = {
-                            navController.navigate("OtherResultScreen/${selectedCourse}")
-                        }) {
-                            Text("Other Result")
-                        }
-                    }
-                }
-
-                // Semester buttons
-                if (selectedCourse.isNotBlank()) {
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text("Select Semester:", style = MaterialTheme.typography.titleMedium)
-
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.fillMaxWidth()
+                    ExposedDropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false }
                     ) {
                         semesters.forEach { sem ->
-                            Button(
+                            DropdownMenuItem(
+                                text = { Text("Semester $sem") },
                                 onClick = {
                                     selectedSemester = sem
                                     updateResultUrl()
-                                },
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = if (sem == selectedSemester)
-                                        MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
-                                )
-                            ) {
-                                Text("Sem $sem")
-                            }
+                                    expanded = false
+                                }
+                            )
                         }
                     }
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // WebView + Download
+                // ---------------- Download + WebView ----------------
                 resultUrl?.let { url ->
                     Button(
                         onClick = {
                             try {
                                 val request = DownloadManager.Request(Uri.parse(url))
                                     .setTitle("Result_$regNo")
-                                    .setDescription("Downloading Result")
-                                    .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                                    .setNotificationVisibility(
+                                        DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED
+                                    )
                                     .setDestinationInExternalPublicDir(
                                         Environment.DIRECTORY_DOWNLOADS,
                                         "Result_$regNo.pdf"
                                     )
 
-                                val dm = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+                                val dm =
+                                    context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
                                 dm.enqueue(request)
 
                                 Toast.makeText(context, "Downloading PDF...", Toast.LENGTH_SHORT).show()
                             } catch (e: Exception) {
-                                Toast.makeText(context, "Download failed: ${e.message}", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, "Download failed", Toast.LENGTH_SHORT).show()
                             }
                         },
                         modifier = Modifier.fillMaxWidth()
@@ -280,7 +238,7 @@ fun ResultScreen(navController: NavController) {
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
-                    ResultWebView(url = url)
+                    ResultWebView(url)
                 }
             }
         }
@@ -301,32 +259,24 @@ fun ResultWebView(url: String) {
                 loadUrl(url)
             }
         },
-        update = { webView -> webView.loadUrl(url) },
+        update = { it.loadUrl(url) },
         modifier = Modifier
             .fillMaxWidth()
             .height(500.dp)
     )
 }
 
-suspend fun fetchResultLinks(jsonUrl: String): Map<String, Map<String, String>>? {
+suspend fun fetchSemesterLinks(jsonUrl: String): Map<String, String>? {
     return withContext(Dispatchers.IO) {
         try {
             val jsonText = URL(jsonUrl).readText()
             val json = JSONObject(jsonText)
-            val resultMap = mutableMapOf<String, Map<String, String>>()
-
-            json.keys().forEach { course ->
-                val courseObject = json.getJSONObject(course)
-                val semObj = courseObject.getJSONObject("semesters")
-                val semMap = mutableMapOf<String, String>()
-                semObj.keys().forEach { sem ->
-                    semMap[sem] = semObj.getString(sem)
-                }
-                resultMap[course] = semMap
+            val map = mutableMapOf<String, String>()
+            json.keys().forEach { key ->
+                map[key] = json.getString(key)
             }
-            resultMap
+            map
         } catch (e: Exception) {
-            e.printStackTrace()
             null
         }
     }

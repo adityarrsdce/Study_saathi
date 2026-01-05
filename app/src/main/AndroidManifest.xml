@@ -8,8 +8,7 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.VIBRATE" />
-    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
-
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
     <application
         android:allowBackup="true"
@@ -19,7 +18,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Appp">
 
-        <!-- Firebase Notification Meta -->
+        <!-- 🔔 Firebase Notification Meta -->
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
             android:value="babu_bhaiya_channel" />
@@ -32,12 +31,23 @@
             android:name="com.google.firebase.messaging.default_notification_color"
             android:resource="@color/white" />
 
-        <!-- AdMob App ID -->
+        <!-- 📢 AdMob App ID -->
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
             android:value="ca-app-pub-4302526630220985~8567669353" />
 
-        <!-- MainActivity -->
+        <!-- ✅ FileProvider (REQUIRED for PDF Local Viewer) -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.provider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
+        <!-- 🚀 Main Activity -->
         <activity
             android:name="com.babu.appp.MainActivity"
             android:exported="true"
@@ -48,7 +58,7 @@
             </intent-filter>
         </activity>
 
-        <!-- Firebase Messaging Service -->
+        <!-- 🔥 Firebase Messaging Service -->
         <service
             android:name="com.babu.appp.MyFirebaseMessagingService"
             android:exported="true"

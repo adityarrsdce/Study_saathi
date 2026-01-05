@@ -35,15 +35,11 @@ import kotlinx.serialization.json.Json
 
 // ------------------- Serializable Classes -------------------
 @Serializable
-data class EventCourseList(val events: Map<String, String>) // course -> URL
-
-@Serializable
-data class EventCourseData(val semesters: Map<String, String>) // semester -> URL
+data class EventSemesterData(
+    val semesters: Map<String, String> // semester -> file URL
+)
 
 // ------------------- Helper Functions -------------------
-fun <V> Map<String, V>.calInsensitive(key: String): V? =
-    this.entries.firstOrNull { it.key.equals(key, ignoreCase = true) }?.value
-
 fun String.isPdf(): Boolean = lowercase().endsWith(".pdf")
 fun String.isImage(): Boolean =
     lowercase().endsWith(".jpg") || endsWith(".jpeg") || endsWith(".png") || endsWith(".webp")
@@ -52,62 +48,72 @@ fun String.isImage(): Boolean =
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CalendarScreen() {
+
     val scope = rememberCoroutineScope()
     val isDark = isSystemInDarkTheme()
+
     val backgroundPainter =
-        if (isDark) painterResource(id = R.drawable.pyq_dark) else painterResource(id = R.drawable.pyq_light)
+        if (isDark) painterResource(id = R.drawable.pyq_dark)
+        else painterResource(id = R.drawable.pyq_light)
+
     val appBarColor = if (isDark) Color(0xFF1C1C1C) else Color(0xFFE5D1B5)
     val appBarTextColor = if (isDark) Color.White else Color.Black
     val dropdownBgColor = if (isDark) Color(0xFF2C2C2C) else Color.White
     val dropdownTextColor = if (isDark) Color.White else Color.Black
-    val errorTextColor = if (isDark) Color.White else Color.Black
 
     // ------------------- State -------------------
-    var eventCourseList by remember { mutableStateOf<EventCourseList?>(null) }
-    var eventCourseData by remember { mutableStateOf<EventCourseData?>(null) }
+    var eventSemesterData by remember { mutableStateOf<EventSemesterData?>(null) }
+    var selectedSemester by rememberSaveable { mutableStateOf("") }
+    var selectedFileUrl by remember { mutableStateOf<String?>(null) }
 
     var isLoading by remember { mutableStateOf(false) }
     var fetchError by remember { mutableStateOf<String?>(null) }
 
-    var selectedCourse by rememberSaveable { mutableStateOf("") }
-    var selectedSemester by rememberSaveable { mutableStateOf("") }
+    val jsonUrl =
+        "https://raw.githubusercontent.com/adityarrsdce/babubhaiya/refs/heads/main/academic_calender/academic_calendar.json"
 
-    var selectedFileUrl by remember { mutableStateOf<String?>(null) }
-
-    val listUrl =
-        "https://raw.githubusercontent.com/adityarrsdce/babubhaiya/refs/heads/main/academic_calender/academic_calendar%20.json"
-
-    // ------------------- Fetch Course List -------------------
+    // ------------------- Fetch Semester Data -------------------
     LaunchedEffect(Unit) {
-        try {
-            val json = withContext(Dispatchers.IO) { fetchJsonFromUrl(listUrl) }
-            eventCourseList = Json.decodeFromString(json.toString())
-        } catch (e: Exception) {
-            fetchError = "Data not available"
+        scope.launch {
+            isLoading = true
+            try {
+                val json = withContext(Dispatchers.IO) { fetchJsonFromUrl(jsonUrl) }
+                eventSemesterData = Json.decodeFromString(json.toString())
+                fetchError = null
+            } catch (e: Exception) {
+                fetchError = "Data not available"
+            }
+            isLoading = false
         }
     }
 
-    val courseOptions = eventCourseList?.events?.keys?.toList() ?: emptyList()
-    val semesterOptions = eventCourseData?.semesters?.keys?.toList() ?: emptyList()
+    val semesterOptions = eventSemesterData?.semesters?.keys?.toList() ?: emptyList()
 
     // ------------------- Scaffold -------------------
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Academic Calendar", fontSize = 20.sp, color = appBarTextColor) },
+                title = {
+                    Text(
+                        "Academic Calendar",
+                        fontSize = 20.sp,
+                        color = appBarTextColor
+                    )
+                },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = appBarColor)
             )
         }
     ) { paddingValues ->
+
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            // Background
+
             Image(
                 painter = backgroundPainter,
-                contentDescription = "Background",
+                contentDescription = null,
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop
             )
@@ -119,44 +125,17 @@ fun CalendarScreen() {
                 verticalArrangement = Arrangement.spacedBy(16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // ------------------- Course Dropdown -------------------
-                EventDropdown(
-                    label = "Select Course",
-                    options = courseOptions,
-                    selected = selectedCourse,
-                    backgroundColor = dropdownBgColor,
-                    textColor = dropdownTextColor
-                ) { course ->
-                    selectedCourse = course
-                    selectedSemester = ""
-                    selectedFileUrl = null
-
-                    val url = eventCourseList?.events?.calInsensitive(course) ?: return@EventDropdown
-                    scope.launch {
-                        isLoading = true
-                        try {
-                            val json = withContext(Dispatchers.IO) { fetchJsonFromUrl(url) }
-                            eventCourseData = Json.decodeFromString(json.toString())
-                            fetchError = null
-                        } catch (e: Exception) {
-                            fetchError = "Data not available"
-                        }
-                        isLoading = false
-                    }
-                }
 
                 // ------------------- Semester Dropdown -------------------
-                if (selectedCourse.isNotEmpty()) {
-                    EventDropdown(
-                        label = "Select Semester",
-                        options = semesterOptions,
-                        selected = selectedSemester,
-                        backgroundColor = dropdownBgColor,
-                        textColor = dropdownTextColor
-                    ) { semester ->
-                        selectedSemester = semester
-                        selectedFileUrl = eventCourseData?.semesters?.get(semester)
-                    }
+                EventDropdown(
+                    label = "Select Semester",
+                    options = semesterOptions,
+                    selected = selectedSemester,
+                    backgroundColor = dropdownBgColor,
+                    textColor = dropdownTextColor
+                ) { semester ->
+                    selectedSemester = semester
+                    selectedFileUrl = eventSemesterData?.semesters?.get(semester)
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -171,12 +150,15 @@ fun CalendarScreen() {
                 ) {
                     when {
                         isLoading -> CircularProgressIndicator()
-                        fetchError != null -> Text(fetchError ?: "Error", color = errorTextColor)
+                        fetchError != null -> Text(fetchError!!, color = dropdownTextColor)
                         selectedFileUrl != null -> {
                             when {
-                                selectedFileUrl!!.isPdf() -> PDFViewerWebView(selectedFileUrl!!)
-                                selectedFileUrl!!.isImage() -> ZoomableImage(selectedFileUrl!!)
-                                else -> Text("Unsupported file type", color = MaterialTheme.colorScheme.error)
+                                selectedFileUrl!!.isPdf() ->
+                                    PDFViewerWebView(selectedFileUrl!!)
+                                selectedFileUrl!!.isImage() ->
+                                    ZoomableImage(selectedFileUrl!!)
+                                else ->
+                                    Text("Unsupported file type", color = MaterialTheme.colorScheme.error)
                             }
                         }
                     }
@@ -211,22 +193,20 @@ fun EventDropdown(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(if (selected.isEmpty()) label else selected, color = textColor)
-                Icon(Icons.Default.ArrowDropDown, contentDescription = null, tint = textColor)
+                Icon(Icons.Default.ArrowDropDown, null, tint = textColor)
             }
         }
 
         DropdownMenu(
             expanded = expanded,
             onDismissRequest = { expanded = false },
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(backgroundColor)
+            modifier = Modifier.background(backgroundColor)
         ) {
-            options.forEach { option ->
+            options.forEach {
                 DropdownMenuItem(
-                    text = { Text(option, color = textColor) },
+                    text = { Text(it, color = textColor) },
                     onClick = {
-                        onSelected(option)
+                        onSelected(it)
                         expanded = false
                     }
                 )
@@ -277,7 +257,7 @@ fun ZoomableImage(url: String) {
     ) {
         AsyncImage(
             model = url,
-            contentDescription = "Event Image",
+            contentDescription = null,
             modifier = Modifier
                 .fillMaxWidth()
                 .graphicsLayer(
