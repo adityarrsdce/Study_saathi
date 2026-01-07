@@ -11,6 +11,7 @@ composeBom = "2024.09.00"
 firebaseMessagingKtx = "24.1.1"
 playServicesMeasurementApi = "22.4.0"
 firebaseCrashlyticsBuildtools = "3.0.5"
+runtime = "1.10.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -31,6 +32,7 @@ firebase-messaging-ktx = { group = "com.google.firebase", name = "firebase-messa
 startup = { group = "androidx.startup", name = "startup-runtime", version = "1.1.1" }
 play-services-measurement-api = { group = "com.google.android.gms", name = "play-services-measurement-api", version.ref = "playServicesMeasurementApi" }
 firebase-crashlytics-buildtools = { group = "com.google.firebase", name = "firebase-crashlytics-buildtools", version.ref = "firebaseCrashlyticsBuildtools" }
+androidx-compose-runtime = { group = "androidx.compose.runtime", name = "runtime", version.ref = "runtime" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
