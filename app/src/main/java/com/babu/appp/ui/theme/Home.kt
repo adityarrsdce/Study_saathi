@@ -73,7 +73,7 @@ fun HomeScreen(navController: NavController, paddingValues: PaddingValues) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
+                //.verticalScroll(rememberScrollState())
         ) {
 
             Text(
@@ -120,6 +120,8 @@ fun CardGrid(
     items: List<Triple<String, Int, Color>>,
     onItemClick: (String) -> Unit
 ) {
+    val isDark = isSystemInDarkTheme()
+
     Column {
         items.chunked(2).forEach { rowItems ->
             Row(
@@ -133,12 +135,28 @@ fun CardGrid(
                     Card(
                         modifier = Modifier
                             .weight(1f)
-                            .height(140.dp) // ✅ FIXED CARD HEIGHT
+                            .height(120.dp)
                             .clickable { onItemClick(label) },
-                        shape = RoundedCornerShape(16.dp),
-                        elevation = CardDefaults.cardElevation(6.dp),
+
+                        shape = RoundedCornerShape(18.dp),
+
+                        // 🔑 IMPORTANT FIXES
+                        elevation = CardDefaults.cardElevation(
+                            defaultElevation = if (isDark) 0.dp else 6.dp
+                        ),
+
+                        border = if (isDark)
+                            BorderStroke(
+                                1.dp,
+                                Color.White.copy(alpha = 0.08f)
+                            )
+                        else null,
+
                         colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surface
+                            containerColor = if (isDark)
+                                Color(0xFF1E1E1E)   // ✅ Slightly lighter than bg
+                            else
+                                MaterialTheme.colorScheme.surface
                         )
                     ) {
                         Column(
@@ -154,20 +172,21 @@ fun CardGrid(
                                 modifier = Modifier.size(48.dp)
                             )
 
-                            Spacer(modifier = Modifier.height(8.dp))
+                            Spacer(modifier = Modifier.height(10.dp))
 
                             Text(
                                 text = label,
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Medium,
                                 maxLines = 2,
-                                textAlign = TextAlign.Center
+                                textAlign = TextAlign.Center,
+                                color = if (isDark) Color.White else Color.Black
                             )
                         }
                     }
                 }
 
-                // Maintain grid alignment for odd items
+                // Maintain grid alignment
                 if (rowItems.size == 1) {
                     Spacer(modifier = Modifier.weight(1f))
                 }
@@ -175,6 +194,7 @@ fun CardGrid(
         }
     }
 }
+
 
 @Composable
 fun ShowBannerAd(adUnitId: String) {

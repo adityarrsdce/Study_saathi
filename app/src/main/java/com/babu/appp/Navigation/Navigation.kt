@@ -23,7 +23,7 @@ fun AppNavigation() {
     Scaffold(
         bottomBar = {
             if (showBottomBar) {
-                BottomNavigationBar(navController)
+                BottomNavigationBar_V1(navController)
             }
         }
     ) { innerPadding ->

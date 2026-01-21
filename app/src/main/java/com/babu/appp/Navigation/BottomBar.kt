@@ -1,5 +1,6 @@
 package com.babu.appp.Navigation
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material.icons.Icons
@@ -13,14 +14,12 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 
 @Composable
-fun BottomNavigationBar(navController: NavController) {
+fun BottomNavigationBar_V1(navController: NavController) {
     val currentDestination by navController.currentBackStackEntryAsState()
     val currentRoute = currentDestination?.destination?.route
 
     val isDarkMode = isSystemInDarkTheme()
-
-    // ✅ Define color based on theme
-    val selectedColor = if (isDarkMode) Color(0xFFE5D1B5) else Color(0xFFE5D1B5)
+    val selectedColor = Color(0xFFE5D1B5)
     val unselectedColor = if (isDarkMode) Color(0xFFB0B0B0) else Color(0xFF000000)
     val containerColor = if (isDarkMode) Color(0xFF121212) else Color.White
 
@@ -36,37 +35,30 @@ fun BottomNavigationBar(navController: NavController) {
         items.forEach { (route, label, icon) ->
             val isSelected = currentRoute == route
 
+            val tint by animateColorAsState(
+                if (isSelected) selectedColor else unselectedColor,
+                label = ""
+            )
+
             NavigationBarItem(
                 selected = isSelected,
                 onClick = {
                     if (!isSelected) {
                         navController.navigate(route) {
-                            popUpTo("home") { inclusive = false }
+                            popUpTo("home")
                             launchSingleTop = true
                         }
                     }
                 },
                 icon = {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(
-                            imageVector = icon,
-                            contentDescription = label,
-                            tint = if (isSelected) selectedColor else unselectedColor
-                        )
-                        Text(
-                            text = label,
-                            fontSize = 10.sp,
-                            color = if (isSelected) selectedColor else unselectedColor
-                        )
+                        Icon(icon, contentDescription = label, tint = tint)
+                        Text(label, fontSize = 10.sp, color = tint)
                     }
                 },
                 alwaysShowLabel = true,
                 colors = NavigationBarItemDefaults.colors(
-                    indicatorColor = Color.Transparent, // ✅ Remove ripple background
-                    selectedIconColor = selectedColor,
-                    selectedTextColor = selectedColor,
-                    unselectedIconColor = unselectedColor,
-                    unselectedTextColor = unselectedColor
+                    indicatorColor = Color.Transparent
                 )
             )
         }
